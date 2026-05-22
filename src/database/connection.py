@@ -10,11 +10,15 @@ load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if not DATABASE_URL:
-    raise ValueError("❌ Erro: A variável DATABASE_URL não foi encontrada no arquivo .env")
+    raise ValueError(
+        "❌ Erro: A variável DATABASE_URL não foi encontrada no arquivo .env"
+    )
+
 
 def get_engine():
     # pool_pre_ping garante que conexões caídas com a nuvem sejam testadas e refeitas automaticamente
     return create_engine(DATABASE_URL, pool_pre_ping=True)
+
 
 # Configuração da Sessão
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=get_engine())
