@@ -6,15 +6,15 @@ from dotenv import load_dotenv
 # Carrega as variáveis do arquivo .env
 load_dotenv()
 
-DB_HOST = os.getenv("DB_HOST")
-DB_DATABASE = os.getenv("DB_DATABASE")
-DB_USER = os.getenv("DB_USER")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
+# Puxa a string completa direto do .env
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_DATABASE}"
+if not DATABASE_URL:
+    raise ValueError("❌ Erro: A variável DATABASE_URL não foi encontrada no arquivo .env")
 
 def get_engine():
-    return create_engine(DATABASE_URL)
+    # pool_pre_ping garante que conexões caídas com a nuvem sejam testadas e refeitas automaticamente
+    return create_engine(DATABASE_URL, pool_pre_ping=True)
 
-# Configuração da Sessão (útil se você for fazer queries complexas depois)
+# Configuração da Sessão
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=get_engine())

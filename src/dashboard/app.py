@@ -81,8 +81,7 @@ else:
             linha_selecionada = st.selectbox("Linha Operacional:", options=lista_opcoes)
             botao_buscar = st.form_submit_button(label="⚡ Atualizar Indicadores")
             
-        st.markdown("---")
-        st.markdown("💡 **Dica de Portfólio:** Dados carregados via SQLAlchemy com pool de conexões otimizado e variáveis protegidas por ambiente (.env).")
+    
 
     # 4. PROCESSAMENTO E EXIBIÇÃO DOS RESULTADOS
     if botao_buscar:
