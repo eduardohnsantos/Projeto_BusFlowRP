@@ -1,7 +1,7 @@
-import streamlit as st
-import pandas as pd
 import os
 import sys
+import pandas as pd
+import streamlit as st
 
 # Garante que o Python encontre a pasta 'src' para fazer o import correto do banco
 diretorio_atual = os.path.dirname(os.path.abspath(__file__))
@@ -9,7 +9,7 @@ raiz_projeto = os.path.abspath(os.path.join(diretorio_atual, "..", ".."))
 if raiz_projeto not in sys.path:
     sys.path.append(raiz_projeto)
 
-# Importa a conexão que você testou e funcionou!
+# AGORA SIM: O import do projeto fica logo após os pacotes principais, no topo!
 from src.database.connection import get_engine
 
 # 1. CONFIGURAÇÃO DA PÁGINA (Identidade Visual)
@@ -47,7 +47,7 @@ def inicializar_banco():
 engine = inicializar_banco()
 
 
-@st.cache_data(ttl=600)  # Cache de 10 minutos para performance operacional
+@st.cache_data(ttl=600, show_spinner="🔄 Conectando ao PostgreSQL e carregando malha horária...")
 def carregar_e_limpar_dados():
     try:
         # Puxando a tabela que seu script de ingestão acabou de criar!
