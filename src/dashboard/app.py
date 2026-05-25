@@ -23,7 +23,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Estilização CSS adaptativa (Garante visibilidade perfeita no Dark Mode)
+# Estilização CSS adaptativa (Garante visibilidade perfeita e simetria nos KPIs)
 st.markdown(
     """
     <style>
@@ -38,15 +38,13 @@ st.markdown(
             border: 1px solid rgba(128, 128, 128, 0.2); 
         }
         
-        /* Diminui o tamanho do valor principal do KPI (Letras grandes) */
+        /* Ajuste do tamanho da fonte para evitar quebras de linha */
         div[data-testid="stMetricValue"] {
-            font-size: 1.8rem !important;
+            font-size: 1.6rem !important;
             font-weight: 600 !important;
         }
-        
-        /* Diminui o tamanho do rótulo/título do KPI */
         div[data-testid="stMetricLabel"] {
-            font-size: 0.9rem !important;
+            font-size: 0.85rem !important;
         }
     </style>
 """,
@@ -89,6 +87,24 @@ def buscar_gps_tempo_real(codigo_linha):
         return pd.DataFrame()
 
 
+def buscar_historico_trajeto(codigo_linha):
+    try:
+        # Puxa as últimas 50 coordenadas em ordem cronológica para desenhar a linha do rastro
+        query = f"""
+            SELECT latitude, longitude 
+            FROM historico_telemetria 
+            WHERE codigo_linha = '{codigo_linha}' 
+            ORDER BY ultima_atualizacao DESC 
+            LIMIT 50
+        """
+        df_hist = pd.read_sql_query(query, engine)
+        
+        # Inverte a ordem para que o desenho vá do ponto mais antigo ao mais recente
+        return df_hist.iloc[::-1].reset_index(drop=True)
+    except Exception as e:
+        return pd.DataFrame()
+
+
 df_linhas = carregar_e_limpar_dados()
 
 # 3. INTERFACE PRINCIPAL & SIDEBAR
@@ -119,15 +135,13 @@ else:
         df_filtrado = df_linhas[df_linhas["codigo_linha"] == codigo_solicitado].copy()
 
         nome_linha_limpo = df_filtrado["nome_linha"].iloc[0]
-        tarifa_linha = df_filtrado["tarifa_r$"].iloc[0]
         total_viagens = len(df_filtrado)
-        sentidos_disponiveis = df_filtrado["sentido"].unique()
+        sentidos_disponiveis = df_filtrado["sentido"].unique()  # <-- Corrigido aqui!
 
         # --- CAMADA VISUAL 1: KPIs Principais (Com Métrica de Pontualidade Real-Time) ---
         st.subheader(f"📊 Indicadores de Performance: Linha {codigo_solicitado}")
         
         try:
-            # Query analítica que cruza a última telemetria com a viagem planejada mais próxima no tempo
             query_otp = f"""
                 SELECT 
                     m.horario_partida,
@@ -144,12 +158,10 @@ else:
                 horario_planejado = pd.to_datetime(resultado_otp['horario_partida'].iloc[0], format='%H:%M').time()
                 horario_real = pd.to_datetime(resultado_otp['ultima_atualizacao'].iloc[0]).time()
                 
-                # Transforma os horários em minutos totais do dia para calcular a diferença
                 minutos_planejados = horario_planejado.hour * 60 + horario_planejado.minute
                 minutos_reais = horario_real.hour * 60 + horario_real.minute
-                diferenca = minutos_reais - minutes_planejados
+                diferenca = minutos_reais - minutos_planejados
                 
-                # Regra de Negócio: -2 min até +5 min é considerado no horário (Pontual)
                 if -2 <= diferenca <= 5:
                     status_otp = "🟢 No Horário"
                     detalhe_otp = "Pontual"
@@ -166,9 +178,7 @@ else:
             status_otp = "🟢 94.7%"
             detalhe_otp = "Dentro da Meta"
 
-        # Renderização da grade atualizada com 4 cards operacionais
         col1, col2, col3, col4 = st.columns(4)
-
         col1.metric(label="🚌 Linha Alvo", value=nome_linha_limpo)
         col2.metric(label="⏱️ Status de Pontualidade (OTP)", value=status_otp, delta=detalhe_otp)
         col3.metric(label="🔄 Viagens Programadas / Dia", value=f"{total_viagens} saídas")
@@ -205,7 +215,6 @@ else:
                     "chegada_estimada": "Previsão de Recolhimento",
                 }
             )
-
             st.dataframe(df_exibicao, use_container_width=True, hide_index=True)
 
         with aba_analise:
@@ -222,66 +231,72 @@ else:
 
         with aba_trajeto:
             st.markdown("#### 🗺️ Monitoramento de Frota em Tempo Real")
-            st.caption("Os dados do mapa abaixo são atualizados automaticamente a cada 4 segundos vindos do PostgreSQL.")
+            st.caption("Mapa atualizado a cada 4 segundos com a posição ativa e a linha do histórico de rastro.")
 
             from streamlit_autorefresh import st_autorefresh
 
             @st.fragment
             def renderizar_mapa_tempo_real(codigo_linha_atual, nome_linha_atual):
-                # Dispara a atualização silenciosa do fragmento a cada 4 segundos
-                st_autorefresh(interval=4000, limit=100, key="gps_folium_refresh")
+                st_autorefresh(interval=8000, limit=100, key="gps_folium_refresh")
 
                 df_gps = buscar_gps_tempo_real(codigo_linha_atual)
+                df_historico = buscar_historico_trajeto(codigo_linha_atual)
 
                 if not df_gps.empty:
                     lat = float(df_gps["latitude"].iloc[0])
                     lon = float(df_gps["longitude"].iloc[0])
                     ultima_att = pd.to_datetime(df_gps["ultima_atualizacao"].iloc[0]).strftime('%H:%M:%S')
 
-                    # 1. Inicializa o mapa Folium com o tema dark premium
+                    # 1. Inicializa o mapa Folium Dark
                     m = folium.Map(
                         location=[lat, lon], 
                         zoom_start=15, 
                         tiles="CartoDB dark_matter"
                     )
 
-                    # 2. Cria um texto explicativo para quando o usuário clicar no ícone do ônibus
+                    # 2. SE HOUVER HISTÓRICO: Desenha o rastro (Polilinha) azul neon
+                    if not df_historico.empty and len(df_historico) > 1:
+                        pontos_linha = df_historico[["latitude", "longitude"]].values.tolist()
+                        folium.PolyLine(
+                            locations=pontos_linha,
+                            color="#29B6F6",
+                            weight=4,
+                            opacity=0.8,
+                            tooltip="Trajeto Recente do Ônibus"
+                        ).add_to(m)
+
+                    # 3. Popup explicativo do ônibus
                     texto_popup = f"""
                     <div style="font-family: Arial, sans-serif; font-size: 12px; color: #333;">
                         <strong>🚌 Linha {codigo_linha_atual}</strong><br>
                         <span style="color: #666;">{nome_linha_atual}</span><br><br>
-                        <strong>📡 Status:</strong> Operando Live<br>
+                        <strong>📡 Status:</strong> Transmitindo Histórico<br>
                         <strong>⏰ Último Sinal:</strong> {ultima_att}
                     </div>
                     """
 
-                    # 3. Adiciona o marcador customizado com ícone de ônibus do FontAwesome
+                    # 4. Marcador do Ônibus (Posição Atual)
                     folium.Marker(
                         location=[lat, lon],
                         popup=folium.Popup(texto_popup, max_width=250),
-                        tooltip=f"Linha {codigo_linha_atual} - Clique para detalhes",
+                        tooltip=f"Linha {codigo_linha_atual} - Clique para ver o trajeto",
                         icon=folium.Icon(color="blue", icon="bus", prefix="fa")
                     ).add_to(m)
 
-                    st.success(f"📡 Último sinal de GPS recebido às: {ultima_att}")
-                    
-                    # 4. Renderiza o mapa Folium dentro do Streamlit de forma estática no clique
+                    st.success(f"📡 Sinal de GPS recebido às: {ultima_att} | Pontos no Rastro: {len(df_historico)}")
                     st_folium(m, use_container_width=True, height=500, key=f"mapa_{ultima_att}")
                 else:
-                    st.warning("⚠️ Nenhum sinal de GPS encontrado para esta linha no momento. Certifique-se de que o simulador está rodando.")
+                    st.warning("⚠️ Nenhum sinal de GPS encontrado para esta linha no momento.")
 
-            # Executa o mapa passando as informações necessárias
             renderizar_mapa_tempo_real(codigo_solicitado, nome_linha_limpo)
 
     else:
-        st.info(
-            "👈 Use o Painel de Controle à esquerda para selecionar uma linha operacional."
-        )
+        st.info("👈 Use o Painel de Controle à esquerda para selecionar uma linha operacional.")
 
         st.markdown("""
             ### 🏗️ Arquitetura de Dados do Projeto
             Esta aplicação faz parte do portfólio **BusFlow RP**. O ecossistema foi projetado pensando em escalabilidade:
             1. **Ingestão (Ingest):** Scripts Python coletam dados da API e salvam de forma estruturada.
-            2. **Armazenamento (Storage):** Banco de dados relacional PostgreSQL gerenciado via SQLAlchemy.
+            2. **Armazenamento (Storage):** Banco de dados relacional PostgreSQL gerenciado via SQLAlchemy armazenando dados em tempo real e tabelas de fatos históricos.
             3. **Consumo (Analytics):** Painel gerencial construído em Streamlit conectado diretamente à base SQL.
         """)

@@ -45,14 +45,16 @@ def inicializar_simulacao():
     # Loop infinito simulando o movimento dos ônibus pelas ruas
     while True:
         try:
+            horario_atual = datetime.now()
+            
             with engine.begin() as conn:
                 for cod_linha, dados in posicoes.items():
                     # Simula um pequeno movimento (o ônibus andando)
                     dados["lat"] += random.uniform(-0.0005, 0.0005)
                     dados["lon"] += random.uniform(-0.0005, 0.0005)
                     
-                    # Query SQL estilo UPSERT (Insere se não existir, atualiza se já existir)
-                    query = text("""
+                    # 1. QUERY REAL-TIME: Mantém apenas o último ponto ativo do veículo
+                    query_live = text("""
                         INSERT INTO telemetria_onibus (codigo_linha, nome_linha, latitude, longitude, ultima_atualizacao)
                         VALUES (:codigo, :nome, :lat, :lon, :now)
                         ON CONFLICT (codigo_linha) 
@@ -62,15 +64,28 @@ def inicializar_simulacao():
                             ultima_atualizacao = EXCLUDED.ultima_atualizacao;
                     """)
                     
-                    conn.execute(query, {
+                    conn.execute(query_live, {
                         "codigo": cod_linha,
                         "nome": dados["nome_linha"],
                         "lat": dados["lat"],
                         "lon": dados["lon"],
-                        "now": datetime.now()
+                        "now": horario_atual
+                    })
+                    
+                    # 2. QUERY HISTÓRICA (Nova): Alimenta a tabela de trilhas para desenhar os trajetos
+                    query_historico = text("""
+                        INSERT INTO historico_telemetria (codigo_linha, latitude, longitude, ultima_atualizacao)
+                        VALUES (:codigo, :lat, :lon, :now);
+                    """)
+                    
+                    conn.execute(query_historico, {
+                        "codigo": cod_linha,
+                        "lat": dados["lat"],
+                        "lon": dados["lon"],
+                        "now": horario_atual
                     })
             
-            print(f"📡 [{datetime.now().strftime('%H:%M:%S')}] GPS de todas as linhas atualizado no PostgreSQL.")
+            print(f"📡 [{horario_atual.strftime('%H:%M:%S')}] GPS ao vivo e histórico persistidos no PostgreSQL.")
             time.sleep(4) # Espera 4 segundos para a próxima transmissão de GPS
             
         except KeyboardInterrupt:
