@@ -80,7 +80,8 @@ def carregar_e_limpar_dados():
 
 def buscar_gps_tempo_real(codigo_linha):
     try:
-        query = f"SELECT latitude, longitude, ultima_atualizacao FROM telemetria_onibus WHERE codigo_linha = '{codigo_linha}'"
+        # AGORA BUSCANDO TAMBÉM A COLUNA DE STATUS DA CERCA VIRTUAL
+        query = f"SELECT latitude, longitude, ultima_atualizacao, status_rota FROM telemetria_onibus WHERE codigo_linha = '{codigo_linha}'"
         df_gps = pd.read_sql_query(query, engine)
         return df_gps
     except Exception as e:
@@ -136,11 +137,22 @@ else:
 
         nome_linha_limpo = df_filtrado["nome_linha"].iloc[0]
         total_viagens = len(df_filtrado)
-        sentidos_disponiveis = df_filtrado["sentido"].unique()  # <-- Corrigido aqui!
+        sentidos_disponiveis = df_filtrado["sentido"].unique()
 
         # --- CAMADA VISUAL 1: KPIs Principais (Com Métrica de Pontualidade Real-Time) ---
         st.subheader(f"📊 Indicadores de Performance: Linha {codigo_solicitado}")
         
+        # Busca dados do GPS atual para monitorar a cerca virtual logo no cabeçalho
+        df_live_status = buscar_gps_tempo_real(codigo_solicitado)
+        status_cerca = "Sem Sinal"
+        
+        if not df_live_status.empty:
+            status_cerca = df_live_status["status_rota"].iloc[0]
+
+        # Dispara um Banner Vermelho de Alerta caso o ônibus fuja do limite configurado
+        if status_cerca == "⚠️ Fora de Rota":
+            st.error(f"🚨 ALERTAS OPERACIONAIS: O veículo da linha {codigo_solicitado} violou a cerca virtual geográfica de Ribeirão Preto!")
+
         try:
             query_otp = f"""
                 SELECT 
@@ -160,7 +172,7 @@ else:
                 
                 minutos_planejados = horario_planejado.hour * 60 + horario_planejado.minute
                 minutos_reais = horario_real.hour * 60 + horario_real.minute
-                diferenca = minutos_reais - minutos_planejados
+                diferenca = minutes_reais - minutos_planejados
                 
                 if -2 <= diferenca <= 5:
                     status_otp = "🟢 No Horário"
@@ -178,11 +190,12 @@ else:
             status_otp = "🟢 94.7%"
             detalhe_otp = "Dentro da Meta"
 
+        # Grid de métricas adicionando a Cerca Virtual no painel
         col1, col2, col3, col4 = st.columns(4)
         col1.metric(label="🚌 Linha Alvo", value=nome_linha_limpo)
         col2.metric(label="⏱️ Status de Pontualidade (OTP)", value=status_otp, delta=detalhe_otp)
-        col3.metric(label="🔄 Viagens Programadas / Dia", value=f"{total_viagens} saídas")
-        col4.metric(label="🗺️ Itinerários Operacionais", value=f"{len(sentidos_disponiveis)} sentido(s)")
+        col3.metric(label="🌐 Cerca Virtual (Geofence)", value=status_cerca)
+        col4.metric(label="🔄 Viagens Programadas / Dia", value=f"{total_viagens} saídas")
 
         st.write("---")
 
@@ -231,13 +244,13 @@ else:
 
         with aba_trajeto:
             st.markdown("#### 🗺️ Monitoramento de Frota em Tempo Real")
-            st.caption("Mapa atualizado a cada 4 segundos com a posição ativa e a linha do histórico de rastro.")
+            st.caption("Mapa atualizado a cada 4 segundos com detecção de desvios geográficos ativos.")
 
             from streamlit_autorefresh import st_autorefresh
 
             @st.fragment
             def renderizar_mapa_tempo_real(codigo_linha_atual, nome_linha_atual):
-                st_autorefresh(interval=8000, limit=100, key="gps_folium_refresh")
+                st_autorefresh(interval=4000, limit=100, key="gps_folium_refresh")
 
                 df_gps = buscar_gps_tempo_real(codigo_linha_atual)
                 df_historico = buscar_historico_trajeto(codigo_linha_atual)
@@ -246,23 +259,28 @@ else:
                     lat = float(df_gps["latitude"].iloc[0])
                     lon = float(df_gps["longitude"].iloc[0])
                     ultima_att = pd.to_datetime(df_gps["ultima_atualizacao"].iloc[0]).strftime('%H:%M:%S')
+                    status_atual_rota = df_gps["status_rota"].iloc[0]
 
                     # 1. Inicializa o mapa Folium Dark
                     m = folium.Map(
                         location=[lat, lon], 
-                        zoom_start=15, 
+                        zoom_start=14, 
                         tiles="CartoDB dark_matter"
                     )
 
-                    # 2. SE HOUVER HISTÓRICO: Desenha o rastro (Polilinha) azul neon
+                    # Configura cor do ícone com base na Cerca Virtual
+                    cor_marcador = "red" if status_atual_rota == "⚠️ Fora de Rota" else "blue"
+                    cor_linha = "#E53935" if status_atual_rota == "⚠️ Fora de Rota" else "#29B6F6"
+
+                    # 2. SE HOUVER HISTÓRICO: Desenha o rastro (Polilinha) adaptável
                     if not df_historico.empty and len(df_historico) > 1:
                         pontos_linha = df_historico[["latitude", "longitude"]].values.tolist()
                         folium.PolyLine(
                             locations=pontos_linha,
-                            color="#29B6F6",
+                            color=cor_linha,
                             weight=4,
                             opacity=0.8,
-                            tooltip="Trajeto Recente do Ônibus"
+                            tooltip="Trajeto Recente"
                         ).add_to(m)
 
                     # 3. Popup explicativo do ônibus
@@ -270,7 +288,8 @@ else:
                     <div style="font-family: Arial, sans-serif; font-size: 12px; color: #333;">
                         <strong>🚌 Linha {codigo_linha_atual}</strong><br>
                         <span style="color: #666;">{nome_linha_atual}</span><br><br>
-                        <strong>📡 Status:</strong> Transmitindo Histórico<br>
+                        <strong>📡 Monitoramento:</strong> Cerca Virtual Ativa<br>
+                        <strong>🌐 Status Geográfico:</strong> {status_atual_rota}<br>
                         <strong>⏰ Último Sinal:</strong> {ultima_att}
                     </div>
                     """
@@ -279,11 +298,15 @@ else:
                     folium.Marker(
                         location=[lat, lon],
                         popup=folium.Popup(texto_popup, max_width=250),
-                        tooltip=f"Linha {codigo_linha_atual} - Clique para ver o trajeto",
-                        icon=folium.Icon(color="blue", icon="bus", prefix="fa")
+                        tooltip=f"Linha {codigo_linha_atual} - {status_atual_rota}",
+                        icon=folium.Icon(color=cor_marcador, icon="bus", prefix="fa")
                     ).add_to(m)
 
-                    st.success(f"📡 Sinal de GPS recebido às: {ultima_att} | Pontos no Rastro: {len(df_historico)}")
+                    if status_atual_rota == "⚠️ Fora de Rota":
+                        st.error(f"🚨 Alerta no Mapa: Ônibus operando fora da área permitida! [Sinal: {ultima_att}]")
+                    else:
+                        st.success(f"🟢 Operação Normalizada: Veículo dentro da malha geográfica. [Sinal: {ultima_att}]")
+                    
                     st_folium(m, use_container_width=True, height=500, key=f"mapa_{ultima_att}")
                 else:
                     st.warning("⚠️ Nenhum sinal de GPS encontrado para esta linha no momento.")
@@ -296,7 +319,7 @@ else:
         st.markdown("""
             ### 🏗️ Arquitetura de Dados do Projeto
             Esta aplicação faz parte do portfólio **BusFlow RP**. O ecossistema foi projetado pensando em escalabilidade:
-            1. **Ingestão (Ingest):** Scripts Python coletam dados da API e salvam de forma estruturada.
-            2. **Armazenamento (Storage):** Banco de dados relacional PostgreSQL gerenciado via SQLAlchemy armazenando dados em tempo real e tabelas de fatos históricos.
-            3. **Consumo (Analytics):** Painel gerencial construído em Streamlit conectado diretamente à base SQL.
+            1. **Ingestão (Ingest):** Scripts Python coletam dados, aplicam lógica de Geofencing na borda e salvam de forma estruturada.
+            2. **Armazenamento (Storage):** Banco de dados relacional PostgreSQL gerenciado via SQLAlchemy armazenando posições em tempo real e tabelas históricas.
+            3. **Consumo (Analytics):** Painel gerencial construído em Streamlit conectado diretamente à base SQL com alertas automatizados.
         """)
