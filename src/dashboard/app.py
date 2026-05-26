@@ -80,7 +80,6 @@ def carregar_e_limpar_dados():
 
 def buscar_gps_tempo_real(codigo_linha):
     try:
-        # AGORA BUSCANDO TAMBÉM A COLUNA DE STATUS DA CERCA VIRTUAL
         query = f"SELECT latitude, longitude, ultima_atualizacao, status_rota FROM telemetria_onibus WHERE codigo_linha = '{codigo_linha}'"
         df_gps = pd.read_sql_query(query, engine)
         return df_gps
@@ -90,7 +89,6 @@ def buscar_gps_tempo_real(codigo_linha):
 
 def buscar_historico_trajeto(codigo_linha):
     try:
-        # Puxa as últimas 50 coordenadas em ordem cronológica para desenhar a linha do rastro
         query = f"""
             SELECT latitude, longitude 
             FROM historico_telemetria 
@@ -99,11 +97,26 @@ def buscar_historico_trajeto(codigo_linha):
             LIMIT 50
         """
         df_hist = pd.read_sql_query(query, engine)
-        
-        # Inverte a ordem para que o desenho vá do ponto mais antigo ao mais recente
         return df_hist.iloc[::-1].reset_index(drop=True)
     except Exception as e:
         return pd.DataFrame()
+
+
+# Lógica de Fallback para tratar horários especiais de transporte de madrugada (Ex: "24:23")
+def tratar_horario_transporte(hora_str):
+    if not isinstance(hora_str, str):
+        return None
+    try:
+        parts = hora_str.strip().split(':')
+        horas = int(parts[0])
+        minutos = parts[1] if len(parts) > 1 else "00"
+        
+        if horas >= 24:
+            horas = horas - 24
+            
+        return f"{str(horas).zfill(2)}:{minutos}"
+    except:
+        return hora_str
 
 
 df_linhas = carregar_e_limpar_dados()
@@ -139,17 +152,15 @@ else:
         total_viagens = len(df_filtrado)
         sentidos_disponiveis = df_filtrado["sentido"].unique()
 
-        # --- CAMADA VISUAL 1: KPIs Principais (Com Métrica de Pontualidade Real-Time) ---
+        # --- CAMADA VISUAL 1: KPIs Principais ---
         st.subheader(f"📊 Indicadores de Performance: Linha {codigo_solicitado}")
         
-        # Busca dados do GPS atual para monitorar a cerca virtual logo no cabeçalho
         df_live_status = buscar_gps_tempo_real(codigo_solicitado)
         status_cerca = "Sem Sinal"
         
         if not df_live_status.empty:
             status_cerca = df_live_status["status_rota"].iloc[0]
 
-        # Dispara um Banner Vermelho de Alerta caso o ônibus fuja do limite configurado
         if status_cerca == "⚠️ Fora de Rota":
             st.error(f"🚨 ALERTAS OPERACIONAIS: O veículo da linha {codigo_solicitado} violou a cerca virtual geográfica de Ribeirão Preto!")
 
@@ -172,7 +183,7 @@ else:
                 
                 minutos_planejados = horario_planejado.hour * 60 + horario_planejado.minute
                 minutos_reais = horario_real.hour * 60 + horario_real.minute
-                diferenca = minutes_reais - minutos_planejados
+                diferenca = minutos_reais - minutos_planejados # BUG FIX: NameError minutes_reais -> minutos_reais
                 
                 if -2 <= diferenca <= 5:
                     status_otp = "🟢 No Horário"
@@ -190,7 +201,6 @@ else:
             status_otp = "🟢 94.7%"
             detalhe_otp = "Dentro da Meta"
 
-        # Grid de métricas adicionando a Cerca Virtual no painel
         col1, col2, col3, col4 = st.columns(4)
         col1.metric(label="🚌 Linha Alvo", value=nome_linha_limpo)
         col2.metric(label="⏱️ Status de Pontualidade (OTP)", value=status_otp, delta=detalhe_otp)
@@ -214,10 +224,14 @@ else:
                 "Calendário de Operação:",
                 options=sorted(df_filtrado["tipo_dia"].unique()),
                 horizontal=True,
+                key="tipo_dia_radio"
             )
 
             df_horarios_dia = df_filtrado[df_filtrado["tipo_dia"] == tipo_dia].copy()
-            df_horarios_dia = df_horarios_dia.sort_values(by="horario_partida")
+            
+            # BUG FIX: Tratamento preventivo de strings de hora na grade visual
+            df_horarios_dia["horario_partida_limpo"] = df_horarios_dia["horario_partida"].apply(tratar_horario_transporte)
+            df_horarios_dia = df_horarios_dia.sort_values(by="horario_partida_limpo")
 
             df_exibicao = df_horarios_dia[
                 ["sentido", "horario_partida", "chegada_estimada"]
@@ -232,11 +246,18 @@ else:
 
         with aba_analise:
             st.markdown("#### 📊 Distribuição de Viagens por Período")
+            
+            # BUG FIX: Sanitização de horários especiais antes de extrair o dt.hour para o bar_chart
+            df_filtrado["horario_partida_limpo"] = df_filtrado["horario_partida"].apply(tratar_horario_transporte)
             df_filtrado["hora_pura"] = pd.to_datetime(
-                df_filtrado["horario_partida"], format="%H:%M"
+                df_filtrado["horario_partida_limpo"], format="%H:%M", errors="coerce"
             ).dt.hour
+            
+            # Remove eventuais nulos gerados por erros de string malformada
+            df_analise_limpo = df_filtrado.dropna(subset=["html_pura" if "html_pura" in df_filtrado.columns else "hora_pura"])
+            
             contagem_horas = (
-                df_filtrado.groupby(["hora_pura", "tipo_dia"])
+                df_analise_limpo.groupby(["hora_pura", "tipo_dia"])
                 .size()
                 .unstack(fill_value=0)
             )
@@ -268,7 +289,6 @@ else:
                         tiles="CartoDB dark_matter"
                     )
 
-                    # Configura cor do ícone com base na Cerca Virtual
                     cor_marcador = "red" if status_atual_rota == "⚠️ Fora de Rota" else "blue"
                     cor_linha = "#E53935" if status_atual_rota == "⚠️ Fora de Rota" else "#29B6F6"
 
@@ -307,7 +327,8 @@ else:
                     else:
                         st.success(f"🟢 Operação Normalizada: Veículo dentro da malha geográfica. [Sinal: {ultima_att}]")
                     
-                    st_folium(m, use_container_width=True, height=500, key=f"mapa_{ultima_att}")
+                    # BUG FIX: Removido o token dinamico de 'ultima_att' da key para evitar flashes vermelhos e re-renders duros
+                    st_folium(m, use_container_width=True, height=500, key=f"mapa_estavel_{codigo_linha_atual}")
                 else:
                     st.warning("⚠️ Nenhum sinal de GPS encontrado para esta linha no momento.")
 
