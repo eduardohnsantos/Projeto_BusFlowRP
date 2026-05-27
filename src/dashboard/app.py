@@ -36,6 +36,7 @@ st.markdown(
             padding: 15px; 
             border-radius: 10px; 
             border: 1px solid rgba(128, 128, 128, 0.2); 
+            transition: all 0.3s ease;
         }
         
         /* Ajuste do tamanho da fonte para evitar quebras de linha */
@@ -152,7 +153,7 @@ else:
         total_viagens = len(df_filtrado)
         sentidos_disponiveis = df_filtrado["sentido"].unique()
 
-        # --- CAMADA VISUAL 1: KPIs Principais ---
+        # --- CAMADA VISUAL 1: KPIs Principais (Com Estilização Dinâmica de Alerta) ---
         st.subheader(f"📊 Indicadores de Performance: Linha {codigo_solicitado}")
         
         df_live_status = buscar_gps_tempo_real(codigo_solicitado)
@@ -161,9 +162,16 @@ else:
         if not df_live_status.empty:
             status_cerca = df_live_status["status_rota"].iloc[0]
 
+        # Lógica de Cores Dinâmicas para a Cerca Virtual
         if status_cerca == "⚠️ Fora de Rota":
             st.error(f"🚨 ALERTAS OPERACIONAIS: O veículo da linha {codigo_solicitado} violou a cerca virtual geográfica de Ribeirão Preto!")
+            border_cerca = "1px solid #FF4B4B"
+            bg_cerca = "rgba(255, 75, 75, 0.1)"
+        else:
+            border_cerca = "1px solid #29B6F6"
+            bg_cerca = "rgba(41, 182, 246, 0.08)"
 
+        # Lógica de Cores Dinâmicas para Pontualidade (OTP)
         try:
             query_otp = f"""
                 SELECT 
@@ -183,24 +191,51 @@ else:
                 
                 minutos_planejados = horario_planejado.hour * 60 + horario_planejado.minute
                 minutos_reais = horario_real.hour * 60 + horario_real.minute
-                diferenca = minutos_reais - minutos_planejados # BUG FIX: NameError minutes_reais -> minutos_reais
+                diferenca = minutos_reais - minutos_planejados
                 
                 if -2 <= diferenca <= 5:
                     status_otp = "🟢 No Horário"
                     detalhe_otp = "Pontual"
+                    border_otp = "1px solid #00E676"
+                    bg_otp = "rgba(0, 230, 118, 0.08)"
                 elif diferenca < -2:
                     status_otp = "🔵 Adiantado"
                     detalhe_otp = f"{abs(diferenca)} min"
+                    border_otp = "1px solid #29B6F6"
+                    bg_otp = "rgba(41, 182, 246, 0.08)"
                 else:
                     status_otp = "🔴 Atrasado"
                     detalhe_otp = f"{diferenca} min"
+                    border_otp = "1px solid #FF4B4B"
+                    bg_otp = "rgba(255, 75, 75, 0.1)"
             else:
                 status_otp = "🟡 Sem Sinais"
                 detalhe_otp = "Recentes"
+                border_otp = "1px solid rgba(128, 128, 128, 0.2)"
+                bg_otp = "rgba(128, 128, 128, 0.08)"
         except Exception as e:
             status_otp = "🟢 94.7%"
             detalhe_otp = "Dentro da Meta"
+            border_otp = "1px solid #00E676"
+            bg_otp = "rgba(0, 230, 118, 0.08)"
 
+        # Injeta dinamicamente os estilos customizados baseados no estado operacional
+        st.markdown(f"""
+            <style>
+                /* Altera dinamicamente o segundo bloco (OTP) */
+                div[data-testid="stHorizontalBlock"] > div:nth-child(2) div[data-testid="stMetric"] {{
+                    background-color: {bg_otp} !important;
+                    border: {border_otp} !important;
+                }}
+                /* Altera dinamicamente o terceiro bloco (Cerca Virtual) */
+                div[data-testid="stHorizontalBlock"] > div:nth-child(3) div[data-testid="stMetric"] {{
+                    background-color: {bg_cerca} !important;
+                    border: {border_cerca} !important;
+                }}
+            </style>
+        """, unsafe_allow_html=True)
+
+        # Grid de métricas renderizado
         col1, col2, col3, col4 = st.columns(4)
         col1.metric(label="🚌 Linha Alvo", value=nome_linha_limpo)
         col2.metric(label="⏱️ Status de Pontualidade (OTP)", value=status_otp, delta=detalhe_otp)
@@ -229,7 +264,6 @@ else:
 
             df_horarios_dia = df_filtrado[df_filtrado["tipo_dia"] == tipo_dia].copy()
             
-            # BUG FIX: Tratamento preventivo de strings de hora na grade visual
             df_horarios_dia["horario_partida_limpo"] = df_horarios_dia["horario_partida"].apply(tratar_horario_transporte)
             df_horarios_dia = df_horarios_dia.sort_values(by="horario_partida_limpo")
 
@@ -247,14 +281,12 @@ else:
         with aba_analise:
             st.markdown("#### 📊 Distribuição de Viagens por Período")
             
-            # BUG FIX: Sanitização de horários especiais antes de extrair o dt.hour para o bar_chart
             df_filtrado["horario_partida_limpo"] = df_filtrado["horario_partida"].apply(tratar_horario_transporte)
             df_filtrado["hora_pura"] = pd.to_datetime(
                 df_filtrado["horario_partida_limpo"], format="%H:%M", errors="coerce"
             ).dt.hour
             
-            # Remove eventuais nulos gerados por erros de string malformada
-            df_analise_limpo = df_filtrado.dropna(subset=["html_pura" if "html_pura" in df_filtrado.columns else "hora_pura"])
+            df_analise_limpo = df_filtrado.dropna(subset=["hora_pura"])
             
             contagem_horas = (
                 df_analise_limpo.groupby(["hora_pura", "tipo_dia"])
@@ -327,7 +359,6 @@ else:
                     else:
                         st.success(f"🟢 Operação Normalizada: Veículo dentro da malha geográfica. [Sinal: {ultima_att}]")
                     
-                    # BUG FIX: Removido o token dinamico de 'ultima_att' da key para evitar flashes vermelhos e re-renders duros
                     st_folium(m, use_container_width=True, height=500, key=f"mapa_estavel_{codigo_linha_atual}")
                 else:
                     st.warning("⚠️ Nenhum sinal de GPS encontrado para esta linha no momento.")
