@@ -1,194 +1,233 @@
-# 🚌 BusFlow RP — Painel Analítico & Engenharia de Dados
+# 🚌 BusFlow RP  
+### Plataforma de Monitoramento Operacional & Engenharia de Dados para Transporte Público
 
-![Python](https://img.shields.io/badge/Python-3.11-blue)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-blue)
-![Streamlit](https://img.shields.io/badge/Streamlit-Dashboard-red)
-![Status](https://img.shields.io/badge/Status-Concluído-success)
+![Python](https://img.shields.io/badge/Python-3.11-blue?style=for-the-badge&logo=python)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-336791?style=for-the-badge&logo=postgresql)
+![Streamlit](https://img.shields.io/badge/Streamlit-Dashboard-FF4B4B?style=for-the-badge&logo=streamlit)
+![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-ORM-red?style=for-the-badge)
+![Status](https://img.shields.io/badge/Status-Concluído-success?style=for-the-badge)
 
-> **Status do Projeto:** Concluído 🚀
+---
 
-O **BusFlow RP** é uma plataforma de Engenharia de Dados ponta a ponta desenvolvida para monitorar, auditar e otimizar a eficiência do transporte público urbano de Ribeirão Preto em tempo real.
+## 📌 Sobre o Projeto
 
-A solução consome dados brutos de telemetria veicular, processa regras de negócio diretamente na camada de dados e transforma sinais de GPS em indicadores estratégicos para acompanhamento operacional e tomada de decisão.
+O **BusFlow RP** é uma plataforma de Engenharia de Dados ponta a ponta desenvolvida para monitorar, auditar e analisar operações do transporte público urbano em tempo real.
+
+A solução integra processamento de dados, persistência relacional, telemetria GPS e visualização geoespacial interativa, transformando sinais operacionais brutos em indicadores estratégicos para acompanhamento da frota.
+
+O projeto foi construído utilizando arquitetura modular baseada em:
+
+- Pipeline de ingestão de dados
+- Persistência relacional com PostgreSQL
+- Processamento analítico em Python
+- Dashboard interativo com Streamlit
+- Visualização geoespacial com Folium
 
 ---
 
 # 📸 Demonstração do Sistema
 
-## 🏠 Tela Inicial (Onboarding)
+## 🏠 Tela Inicial
 
-Tela inicial de boas-vindas do sistema, desenvolvida para apresentar os recursos da plataforma e facilitar a navegação do usuário.
+Interface inicial desenvolvida para apresentar os indicadores operacionais e facilitar a navegação entre os módulos do sistema.
 
 ![Home](docs/home.png)
 
 ---
 
-## 🗺️ Monitoramento em Tempo Real & Cerca Virtual
+## 🗺️ Monitoramento Operacional em Tempo Real
 
-Ao selecionar uma linha operacional, o sistema calcula indicadores em tempo real e renderiza o mapa dinâmico de telemetria ativa.
+Visualização dinâmica da telemetria da frota, incluindo:
+
+- Atualização automática
+- Rastreamento geográfico
+- KPIs operacionais
+- Validação de geofencing
 
 ![Mapa](docs/mapa.png)
 
 ---
 
-# 🎯 Problema & Solução
+# 🎯 Objetivo da Plataforma
 
-Garantir a qualidade do transporte público exige monitoramento contínuo. Sem auditoria operacional eficiente, atrasos recorrentes, desvios de rota e falhas de operação podem passar despercebidos pelos órgãos gestores.
+Garantir visibilidade operacional contínua da frota de transporte público através de monitoramento em tempo real, validações geográficas e indicadores analíticos.
 
-O **BusFlow RP** resolve esse cenário através de três pilares principais:
+A plataforma permite:
 
----
-
-## ✅ 1. On-Time Performance (OTP)
-
-Calcula em tempo real o desvio entre o horário planejado da operação e o horário efetivo capturado via telemetria GPS.
-
-### Indicadores gerados:
-- Atraso médio por linha
-- Antecipações operacionais
-- Percentual de viagens no horário
-- Monitoramento contínuo da pontualidade
+- Detectar atrasos operacionais
+- Identificar desvios de rota
+- Monitorar veículos em tempo real
+- Validar cercas virtuais (Geofencing)
+- Auditar a operação planejada versus executada
 
 ---
 
-## 🌍 2. Geofencing (Cerca Virtual)
+# ⚙️ Principais Funcionalidades
 
-Implementa validações geográficas diretamente na base de dados para detectar:
+## ✅ On-Time Performance (OTP)
 
-- Desvios de itinerário
+Cálculo de atraso operacional baseado na diferença entre:
+
+- Horário planejado
+- Horário efetivamente capturado via GPS
+
+### Indicadores:
+- Atraso médio
+- Antecipações
+- Percentual de pontualidade
+- Performance operacional por linha
+
+---
+
+## 🌍 Geofencing
+
+Sistema de validação geográfica responsável por detectar:
+
 - Saídas de rota
-- Inconsistências operacionais
-- Falhas de cobertura da linha
+- Desvios operacionais
+- Ruptura de perímetro
+- Inconsistências de itinerário
 
 ---
 
-## 📡 3. Telemetria em Tempo Real
+## 📡 Telemetria Live
 
-Renderiza mapas interativos com atualização automática a cada 4 segundos, permitindo:
+Atualização operacional contínua da frota com refresh automático a cada 4 segundos.
 
-- Visualização da frota em tempo real
-- Rastreamento operacional
-- Identificação de ruídos de sinal
-- Acompanhamento contínuo da operação
+### Recursos:
+- Rastreamento em tempo real
+- Visualização geoespacial dinâmica
+- Monitoramento da operação ativa
+- Tratamento de ruído de sinal GPS
 
 ---
 
-# 🏗️ Arquitetura e Fluxo de Dados (Data Pipeline)
+# 🏗️ Arquitetura e Fluxo de Dados
 
-O **BusFlow RP** opera através de um pipeline de dados estruturado em três camadas principais:
+O BusFlow RP opera através de um pipeline de dados estruturado em quatro camadas:
 
-- Ingestão
-- Armazenamento/Persistência
-- Consumo/Visualização
+1. Ingestão
+2. Armazenamento
+3. Processamento
+4. Visualização
 
-O diagrama abaixo representa o fluxo completo do dado, desde a captura até a visualização analítica em tempo real.
+O fluxo abaixo representa o ciclo de vida completo do dado.
 
 ```mermaid
-graph TD
-    %% Camada de Ingestão
-    subgraph INGESTION [1. Camada de Ingestão & Pipeline]
-        A[Sources: CSV / Simulador GPS] -->|Leitura e Limpeza| B[Scripts Python]
-        B -->|Tratamento de Horários Noturnos| C[Camada de Processamento]
+graph LR
+    %% 1. Camada de Origem e Ingestão
+    subgraph INGESTÃO [1. Ingestão]
+        A[Sources: CSV / Simulador] --> B(Scripts Python)
+        B --> C[Tratamento de Horários]
     end
 
-    %% Camada de Armazenamento
-    subgraph STORAGE [2. Camada de Armazenamento & Persistência]
-        C -->|Carga em Massa / Inserção| D[(PostgreSQL)]
-        D -->|Tabela Estática| E[malha_horaria]
-        D -->|Telemetria Ativa| F[telemetria_onibus]
+    %% 2. Camada de Armazenamento
+    subgraph ARMAZENAMENTO [2. Armazenamento]
+        C -->|Carga em Massa| D[(PostgreSQL)]
+        D --> E[malha_horaria]
+        D --> F[telemetria_onibus]
     end
 
-    %% Camada de Consumo
-    subgraph CONSUMPTION [3. Camada de Consumo & Visualização]
-        G[SQLAlchemy ORM] <-->|Consultas e Agregações| D
-        G -->|DataFrames Pandas| H[Streamlit App]
-        
-        %% Detalhes do Painel
-        H -->|Mecanismo Autorefresh 4s| I[Visualização Geoespacial: Folium]
-        H -->|Cálculo de On-Time Performance| J[KPIs de Pontualidade: OTP]
-        H -->|Validação de Perímetro| K[Status da Cerca Virtual: Geofencing]
+    %% 3. Camada de Backend e ORM
+    subgraph BACKEND [3. Processamento]
+        E & F --> G[SQLAlchemy ORM]
+        G --> H[Pandas DataFrames]
     end
 
-    %% Customização de Cores
-    style INGESTION fill:#fdf6e3,stroke:#b58900,stroke-width:2px
-    style STORAGE fill:#eee8d5,stroke:#cb4b16,stroke-width:2px
-    style CONSUMPTION fill:#e0f2f1,stroke:#004d40,stroke-width:2px
-    
-    style A fill:#fff,stroke:#333
-    style B fill:#fff,stroke:#333
-    style D fill:#00E676,stroke:#333,stroke-width:2px,color:#000
-    style H fill:#FF4B4B,stroke:#fff,color:#fff
+    %% 4. Camada de Apresentação
+    subgraph VISUALIZAÇÃO [4. Dashboard]
+        H --> I[Streamlit App]
+        I --> J[Mapa Live Folium]
+        I --> K[Métricas OTP]
+        I --> L[Geofencing Status]
+    end
+
+    %% Estilos
+    style INGESTÃO fill:#fafafa,stroke:#b58900,stroke-width:1px,stroke-dasharray: 5 5
+    style ARMAZENAMENTO fill:#f4fbf7,stroke:#00E676,stroke-width:1px
+    style BACKEND fill:#f0f4f8,stroke:#1E88E5,stroke-width:1px
+    style VISUALIZAÇÃO fill:#fff5f5,stroke:#FF4B4B,stroke-width:1px
 ```
 
 ---
 
-# 🔍 Detalhes do Fluxo de Ponta a Ponta
+# 🧵 Pipeline de Dados — Fluxo Ponta a Ponta
 
-## 📥 Extração e Ingestão (`src/scripts/`)
+## 📥 Camada de Ingestão (`src/scripts/`)
 
-Os dados operacionais brutos são gerados pelo simulador GPS ou extraídos de arquivos estruturados.
+Os dados operacionais são capturados através de:
 
-Os scripts em Python são responsáveis por:
+- Arquivos CSV
+- Simulação GPS
+- Scripts de ingestão
 
-- Parse dos arquivos
+### Responsabilidades:
+- Parse dos dados
 - Limpeza de inconsistências
-- Tratamento de dados inválidos
+- Tratamento de jornadas noturnas
 - Conversão de tipagem
-- Tratamento de viradas de horário na madrugada
-- Padronização das informações operacionais
-
-Essa etapa garante que os dados estejam consistentes antes da persistência no banco.
+- Padronização operacional
 
 ---
 
-## 🗄️ Persistência (`src/database/`)
+## 🗄️ Camada de Persistência (`src/database/`)
 
-Após o processamento, os dados são persistidos no PostgreSQL através da engine do SQLAlchemy.
+Após o tratamento, os dados são persistidos no PostgreSQL utilizando SQLAlchemy ORM.
 
-A modelagem relacional do banco cruza:
+### Estruturas principais:
+- `malha_horaria`
+- `telemetria_onibus`
 
-- A programação operacional planejada (`malha_horaria`)
-- Os dados de telemetria em tempo real (`telemetria_onibus`)
-
-Essa estrutura permite:
-
-- Consultas performáticas
-- Correlação entre horário planejado e operação real
+### Objetivos:
+- Persistência relacional
+- Correlação planejamento × execução
 - Auditoria operacional
-- Cálculo de indicadores de desempenho
+- Base analítica
 
 ---
 
-## 📊 Consumo & Analytics (`src/dashboard/`)
+## ⚙️ Camada de Processamento
 
-A aplicação Streamlit consulta dinamicamente o banco de dados conforme a linha operacional selecionada pelo usuário.
+O backend realiza:
 
-O processamento em memória realiza:
+- Consultas SQL dinâmicas
+- Agregações operacionais
+- Processamento analítico
+- Cruzamento entre telemetria e horários
 
-- Cálculo de atraso operacional em minutos (OTP)
-- Validação geográfica de cercas virtuais (Geofencing)
-- Atualização automática do painel a cada 4 segundos
-- Renderização geoespacial em tempo real utilizando Folium
-
-O dashboard fornece uma visão operacional live da frota, permitindo identificar rapidamente atrasos, desvios de rota e inconsistências de operação.
+Os dados são estruturados em **Pandas DataFrames** para processamento em memória.
 
 ---
 
-# 🛠️ Arquitetura & Tecnologias
+## 📊 Camada de Dashboard (`src/dashboard/`)
 
-A arquitetura foi estruturada com foco em escalabilidade, separação de responsabilidades e processamento eficiente dos dados.
+A aplicação Streamlit consome os dados processados e renderiza:
 
-## 🔧 Stack Tecnológica
+- KPIs operacionais
+- Mapas dinâmicos
+- Indicadores OTP
+- Status de Geofencing
+
+### Recursos:
+- Atualização automática
+- Dashboard em tempo real
+- Renderização geoespacial com Folium
+- Processamento analítico live
+
+---
+
+# 🛠️ Stack Tecnológica
 
 | Camada | Tecnologia |
 |---|---|
 | Linguagem Principal | Python 3.x |
-| Dashboard & Interface | Streamlit |
-| Visualização Geoespacial | Folium + Streamlit Folium |
+| Dashboard | Streamlit |
+| Visualização Geoespacial | Folium |
 | Banco de Dados | PostgreSQL |
 | ORM | SQLAlchemy |
+| Processamento Analítico | Pandas |
 | Gerenciamento de Dependências | Poetry |
-| Variáveis de Ambiente | Python Dotenv |
+| Configuração de Ambiente | Python Dotenv |
 
 ---
 
@@ -235,15 +274,13 @@ PROJETO_BUSFLOWRP/
 
 ---
 
-# 🚀 Como Executar o Projeto Localmente
+# 🚀 Como Executar o Projeto
 
 ## 📋 Pré-requisitos
 
-Antes de começar, você precisará ter instalado:
-
-- Git
 - Python 3.10+
 - PostgreSQL
+- Git
 - Pip
 - Poetry (Opcional)
 
@@ -252,7 +289,7 @@ Antes de começar, você precisará ter instalado:
 ## 1️⃣ Clonar o Repositório
 
 ```bash
-git clone https://github.com/SEU_USUARIO/PROJETO_BUSFLOWRP.git
+git clone https://github.com/eduardohnsantos/Projeto_BusFlowRP
 
 cd PROJETO_BUSFLOWRP
 ```
@@ -261,7 +298,7 @@ cd PROJETO_BUSFLOWRP
 
 ## 2️⃣ Configurar Variáveis de Ambiente
 
-Crie um arquivo `.env` na raiz do projeto:
+Crie um arquivo `.env`:
 
 ```env
 DB_USER=seu_usuario
@@ -270,8 +307,6 @@ DB_HOST=seu_host
 DB_PORT=5432
 DB_NAME=seu_banco
 ```
-
-> ⚠️ O arquivo `.env` deve permanecer no `.gitignore` e nunca deve ser enviado para o GitHub.
 
 ---
 
@@ -297,13 +332,13 @@ venv\Scripts\activate
 
 ## 4️⃣ Instalar Dependências
 
-### Utilizando requirements.txt
+### requirements.txt
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### Utilizando Poetry
+### Poetry
 
 ```bash
 poetry install
@@ -311,13 +346,13 @@ poetry install
 
 ---
 
-## 5️⃣ Executar a Aplicação
+## 5️⃣ Executar o Dashboard
 
 ```bash
 streamlit run src/dashboard/app.py
 ```
 
-A aplicação será iniciada em:
+Aplicação disponível em:
 
 ```bash
 http://localhost:8501
@@ -333,7 +368,7 @@ Os testes automatizados estão localizados em:
 src/tests/
 ```
 
-Para executar os testes:
+Executar testes:
 
 ```bash
 pytest
@@ -343,32 +378,28 @@ pytest
 
 # ⭐ Diferenciais Técnicos
 
-- Processamento de telemetria em tempo real
-- Geofencing aplicado diretamente no banco de dados
+- Pipeline de dados ponta a ponta
+- Processamento analítico em tempo real
+- Geofencing integrado
+- Visualização geoespacial dinâmica
 - Atualização automática do dashboard
 - Arquitetura modular
 - Integração Python + PostgreSQL
-- Visualização geoespacial interativa
-- Simulação de GPS para testes operacionais
-- Pipeline de dados ponta a ponta
-- Monitoramento operacional em tempo real
+- Simulação GPS para testes operacionais
+- Monitoramento operacional contínuo
 
 ---
 
-# 📈 Funcionalidades do Dashboard
+# 📈 Recursos Analíticos
 
-- ✅ Monitoramento em tempo real
-- ✅ KPIs operacionais
-- ✅ Geolocalização da frota
-- ✅ Cerca virtual (Geofencing)
-- ✅ Atualização automática
-- ✅ Auditoria operacional
+- ✅ Monitoramento da frota em tempo real
 - ✅ Indicadores de pontualidade
-- ✅ Interface interativa
-
----
-
-```
+- ✅ Rastreamento geográfico
+- ✅ KPIs operacionais
+- ✅ Auditoria operacional
+- ✅ Geofencing
+- ✅ Dashboard interativo
+- ✅ Atualização live
 
 ---
 
