@@ -19,15 +19,15 @@ A solução consome dados brutos de telemetria veicular, processa regras de neg�
 
 Tela inicial de boas-vindas do sistema, desenvolvida para apresentar os recursos da plataforma e facilitar a navegação do usuário.
 
-<img width="1908" height="926" alt="BusFlow RP" src="https://github.com/user-attachments/assets/c44d0f0f-b8d6-4a42-82ca-7172784051a6" />
-
+![Home](docs/home.png)
 
 ---
+
 ## 🗺️ Monitoramento em Tempo Real & Cerca Virtual
 
 Ao selecionar uma linha operacional, o sistema calcula indicadores em tempo real e renderiza o mapa dinâmico de telemetria ativa.
 
-<img width="1616" height="1080" alt="Mapa" src="https://github.com/user-attachments/assets/77795485-27dc-45da-9928-6c765c5adada" />
+![Mapa](docs/mapa.png)
 
 ---
 
@@ -73,16 +73,104 @@ Renderiza mapas interativos com atualização automática a cada 4 segundos, per
 
 ---
 
-# 🔄 Fluxo de Dados da Aplicação
+# 🏗️ Arquitetura e Fluxo de Dados (Data Pipeline)
 
-O pipeline do BusFlow RP segue o seguinte fluxo:
+O **BusFlow RP** opera através de um pipeline de dados estruturado em três camadas principais:
 
-1. Captura dos dados GPS dos veículos
-2. Processamento e tratamento das coordenadas
-3. Persistência no PostgreSQL
-4. Aplicação das regras de negócio
-5. Consumo dos dados pelo dashboard Streamlit
-6. Renderização geoespacial em tempo real
+- Ingestão
+- Armazenamento/Persistência
+- Consumo/Visualização
+
+O diagrama abaixo representa o fluxo completo do dado, desde a captura até a visualização analítica em tempo real.
+
+```mermaid
+graph TD
+    %% Camada de Ingestão
+    subgraph INGESTION [1. Camada de Ingestão & Pipeline]
+        A[Sources: CSV / Simulador GPS] -->|Leitura e Limpeza| B[Scripts Python]
+        B -->|Tratamento de Horários Noturnos| C[Camada de Processamento]
+    end
+
+    %% Camada de Armazenamento
+    subgraph STORAGE [2. Camada de Armazenamento & Persistência]
+        C -->|Carga em Massa / Inserção| D[(PostgreSQL)]
+        D -->|Tabela Estática| E[malha_horaria]
+        D -->|Telemetria Ativa| F[telemetria_onibus]
+    end
+
+    %% Camada de Consumo
+    subgraph CONSUMPTION [3. Camada de Consumo & Visualização]
+        G[SQLAlchemy ORM] <-->|Consultas e Agregações| D
+        G -->|DataFrames Pandas| H[Streamlit App]
+        
+        %% Detalhes do Painel
+        H -->|Mecanismo Autorefresh 4s| I[Visualização Geoespacial: Folium]
+        H -->|Cálculo de On-Time Performance| J[KPIs de Pontualidade: OTP]
+        H -->|Validação de Perímetro| K[Status da Cerca Virtual: Geofencing]
+    end
+
+    %% Customização de Cores
+    style INGESTION fill:#fdf6e3,stroke:#b58900,stroke-width:2px
+    style STORAGE fill:#eee8d5,stroke:#cb4b16,stroke-width:2px
+    style CONSUMPTION fill:#e0f2f1,stroke:#004d40,stroke-width:2px
+    
+    style A fill:#fff,stroke:#333
+    style B fill:#fff,stroke:#333
+    style D fill:#00E676,stroke:#333,stroke-width:2px,color:#000
+    style H fill:#FF4B4B,stroke:#fff,color:#fff
+```
+
+---
+
+# 🔍 Detalhes do Fluxo de Ponta a Ponta
+
+## 📥 Extração e Ingestão (`src/scripts/`)
+
+Os dados operacionais brutos são gerados pelo simulador GPS ou extraídos de arquivos estruturados.
+
+Os scripts em Python são responsáveis por:
+
+- Parse dos arquivos
+- Limpeza de inconsistências
+- Tratamento de dados inválidos
+- Conversão de tipagem
+- Tratamento de viradas de horário na madrugada
+- Padronização das informações operacionais
+
+Essa etapa garante que os dados estejam consistentes antes da persistência no banco.
+
+---
+
+## 🗄️ Persistência (`src/database/`)
+
+Após o processamento, os dados são persistidos no PostgreSQL através da engine do SQLAlchemy.
+
+A modelagem relacional do banco cruza:
+
+- A programação operacional planejada (`malha_horaria`)
+- Os dados de telemetria em tempo real (`telemetria_onibus`)
+
+Essa estrutura permite:
+
+- Consultas performáticas
+- Correlação entre horário planejado e operação real
+- Auditoria operacional
+- Cálculo de indicadores de desempenho
+
+---
+
+## 📊 Consumo & Analytics (`src/dashboard/`)
+
+A aplicação Streamlit consulta dinamicamente o banco de dados conforme a linha operacional selecionada pelo usuário.
+
+O processamento em memória realiza:
+
+- Cálculo de atraso operacional em minutos (OTP)
+- Validação geográfica de cercas virtuais (Geofencing)
+- Atualização automática do painel a cada 4 segundos
+- Renderização geoespacial em tempo real utilizando Folium
+
+O dashboard fornece uma visão operacional live da frota, permitindo identificar rapidamente atrasos, desvios de rota e inconsistências de operação.
 
 ---
 
@@ -97,7 +185,7 @@ A arquitetura foi estruturada com foco em escalabilidade, separação de respons
 | Linguagem Principal | Python 3.x |
 | Dashboard & Interface | Streamlit |
 | Visualização Geoespacial | Folium + Streamlit Folium |
-| Banco de Dados | PostgreSQL + Render |
+| Banco de Dados | PostgreSQL |
 | ORM | SQLAlchemy |
 | Gerenciamento de Dependências | Poetry |
 | Variáveis de Ambiente | Python Dotenv |
@@ -154,7 +242,7 @@ PROJETO_BUSFLOWRP/
 Antes de começar, você precisará ter instalado:
 
 - Git
-- Python 3.12
+- Python 3.10+
 - PostgreSQL
 - Pip
 - Poetry (Opcional)
@@ -237,30 +325,6 @@ http://localhost:8501
 
 ---
 
-# 🛠️ Pipeline & Engenharia de Dados
-
-## 🔄 Camada de Ingestão
-
-Pipelines responsáveis por:
-
-- Limpeza dos dados
-- Padronização de tipagem
-- Tratamento de inconsistências
-- Ajustes de jornadas operacionais noturnas/madrugada
-
----
-
-## 🗄️ Camada de Persistência
-
-Estrutura relacional normalizada contendo:
-
-- Malha horária operacional
-- Telemetria em tempo real
-- Relação entre linhas, veículos e horários
-- Regras de negócio aplicadas diretamente no banco
-
----
-
 # 🧪 Testes
 
 Os testes automatizados estão localizados em:
@@ -286,6 +350,8 @@ pytest
 - Integração Python + PostgreSQL
 - Visualização geoespacial interativa
 - Simulação de GPS para testes operacionais
+- Pipeline de dados ponta a ponta
+- Monitoramento operacional em tempo real
 
 ---
 
@@ -302,22 +368,6 @@ pytest
 
 ---
 
-# 💡 Organização das Imagens no GitHub
-
-Para manter o README organizado, recomenda-se criar uma pasta `docs/` na raiz do projeto e salvar as capturas de tela nela:
-
-```bash
-docs/
-├── home.png
-└── mapa.png
-```
-
-Depois disso, basta utilizar:
-
-```markdown
-![Home](docs/home.png)
-
-![Mapa](docs/mapa.png)
 ```
 
 ---
@@ -332,4 +382,4 @@ Projeto voltado para estudos práticos de:
 - Geoprocessamento
 - Monitoramento em tempo real
 - Visualização analítica
-- Arquitetura de dados com Python<img width="1908" height="926" alt="BusFlow RP" src="https://github.com/user-attachments/assets/12480dd9-0032-418b-a11c-1ea2ad98e348" />
+- Arquitetura de dados com Python
