@@ -222,7 +222,7 @@ A aplicação Streamlit consome os dados processados e renderiza:
 
 | Camada | Tecnologia |
 |---|---|
-| Linguagem Principal | Python 3.x |
+| Linguagem Principal | Python 3.12 |
 | Dashboard | Streamlit |
 | Visualização Geoespacial | Folium |
 | Banco de Dados | PostgreSQL |
