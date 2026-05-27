@@ -12,12 +12,12 @@ O **BusFlow RP** é uma plataforma de Engenharia de Dados ponta a ponta desenvol
 ### Tela Inicial (Onboarding)
 Aqui está a tela inicial de boas-vindas do sistema, projetada com cartões nativos estáveis para introduzir o ecossistema e os recursos ao usuário:
 
-![Tela Inicial do BusFlow RP](docs/home.png)
+[Tela Inicial do BusFlow RP](docs/home.png)
 
 ### Monitoramento de Linha e Cerca Virtual em Tempo Real
 Ao selecionar uma linha operacional no painel de controle, o sistema calcula os indicadores instantaneamente e plota o mapa dinâmico de telemetria ativa:
 
-![Monitoramento Live e KPIs](docs/mapa.png)
+[Monitoramento Live e KPIs](docs/mapa.png)
 
 ---
 
