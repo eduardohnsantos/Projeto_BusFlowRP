@@ -19,15 +19,15 @@ A solução consome dados brutos de telemetria veicular, processa regras de neg�
 
 Tela inicial de boas-vindas do sistema, desenvolvida para apresentar os recursos da plataforma e facilitar a navegação do usuário.
 
-![Home](docs/home.png)
+<img width="1908" height="926" alt="BusFlow RP" src="https://github.com/user-attachments/assets/c44d0f0f-b8d6-4a42-82ca-7172784051a6" />
+
 
 ---
-
 ## 🗺️ Monitoramento em Tempo Real & Cerca Virtual
 
 Ao selecionar uma linha operacional, o sistema calcula indicadores em tempo real e renderiza o mapa dinâmico de telemetria ativa.
 
-![Mapa](docs/mapa.png)
+<img width="1616" height="1080" alt="Mapa" src="https://github.com/user-attachments/assets/77795485-27dc-45da-9928-6c765c5adada" />
 
 ---
 
@@ -97,7 +97,7 @@ A arquitetura foi estruturada com foco em escalabilidade, separação de respons
 | Linguagem Principal | Python 3.x |
 | Dashboard & Interface | Streamlit |
 | Visualização Geoespacial | Folium + Streamlit Folium |
-| Banco de Dados | PostgreSQL |
+| Banco de Dados | PostgreSQL + Render |
 | ORM | SQLAlchemy |
 | Gerenciamento de Dependências | Poetry |
 | Variáveis de Ambiente | Python Dotenv |
@@ -154,7 +154,7 @@ PROJETO_BUSFLOWRP/
 Antes de começar, você precisará ter instalado:
 
 - Git
-- Python 3.10+
+- Python 3.12
 - PostgreSQL
 - Pip
 - Poetry (Opcional)
@@ -332,4 +332,4 @@ Projeto voltado para estudos práticos de:
 - Geoprocessamento
 - Monitoramento em tempo real
 - Visualização analítica
-- Arquitetura de dados com Python
+- Arquitetura de dados com Python<img width="1908" height="926" alt="BusFlow RP" src="https://github.com/user-attachments/assets/12480dd9-0032-418b-a11c-1ea2ad98e348" />
