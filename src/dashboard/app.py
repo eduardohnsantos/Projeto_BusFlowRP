@@ -23,19 +23,28 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Estilização CSS adaptativa (Garante visibilidade perfeita e simetria nos KPIs)
+# Estilização CSS Avançada (Identidade Corporativa e Simetria)
 st.markdown(
     """
     <style>
         .block-container { padding-top: 2rem; padding-bottom: 2rem; }
-        h1 { color: #1F497D; font-weight: 700; }
+        
+        /* Título com efeito de degradê tecnológico */
+        .main-title {
+            font-size: 2.8rem;
+            font-weight: 800;
+            background: linear-gradient(45deg, #1E88E5, #00E676);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0rem;
+        }
         
         /* Customização dos Cards de KPI */
         div[data-testid="stMetric"] { 
-            background-color: rgba(128, 128, 128, 0.08); 
+            background-color: rgba(128, 128, 128, 0.06); 
             padding: 15px; 
             border-radius: 10px; 
-            border: 1px solid rgba(128, 128, 128, 0.2); 
+            border: 1px solid rgba(128, 128, 128, 0.15); 
             transition: all 0.3s ease;
         }
         
@@ -46,6 +55,12 @@ st.markdown(
         }
         div[data-testid="stMetricLabel"] {
             font-size: 0.85rem !important;
+        }
+
+        /* Alinhamento vertical do botão Home no topo */
+        div.stButton > button:first-child {
+            margin-top: 18px;
+            float: right;
         }
     </style>
 """,
@@ -88,22 +103,6 @@ def buscar_gps_tempo_real(codigo_linha):
         return pd.DataFrame()
 
 
-def buscar_historico_trajeto(codigo_linha):
-    try:
-        query = f"""
-            SELECT latitude, longitude 
-            FROM historico_telemetria 
-            WHERE codigo_linha = '{codigo_linha}' 
-            ORDER BY ultima_atualizacao DESC 
-            LIMIT 50
-        """
-        df_hist = pd.read_sql_query(query, engine)
-        return df_hist.iloc[::-1].reset_index(drop=True)
-    except Exception as e:
-        return pd.DataFrame()
-
-
-# Lógica de Fallback para tratar horários especiais de transporte de madrugada (Ex: "24:23")
 def tratar_horario_transporte(hora_str):
     if not isinstance(hora_str, str):
         return None
@@ -122,11 +121,24 @@ def tratar_horario_transporte(hora_str):
 
 df_linhas = carregar_e_limpar_dados()
 
-# 3. INTERFACE PRINCIPAL & SIDEBAR
-st.title("🚌 BusFlow RP")
-st.caption(
-    "Plataforma de Engenharia de Dados e Monitoramento de Transporte Urbano • Ribeirão Preto"
-)
+if "buscar_ativa" not in st.session_state:
+    st.session_state.buscar_ativa = False
+
+# 3. INTERFACE PRINCIPAL & SIDEBAR (Header Otimizado)
+col_titulo, col_botao = st.columns([8, 2])
+
+with col_titulo:
+    # Separamos o emoji do texto para que o CSS de degradê não quebre as cores da figurinha
+    st.markdown('<h1 style="margin-bottom: 0rem;"><span style="font-style: normal;">🚌</span> <span class="main-title">BusFlow RP</span></h1>', unsafe_allow_html=True)
+    st.caption(
+        "Plataforma de Engenharia de Dados e Monitoramento de Transporte Urbano • Ribeirão Preto"
+    )
+
+with col_botao:
+    if st.button("🏠 Home", use_container_width=True):
+        st.session_state.buscar_ativa = False
+        st.rerun()
+
 st.write("---")
 
 if df_linhas.empty:
@@ -143,9 +155,12 @@ else:
         with st.form(key="filtro_operacional"):
             linha_selecionada = st.selectbox("Linha Operacional:", options=lista_opcoes)
             botao_buscar = st.form_submit_button(label="⚡ Atualizar Indicadores")
+            
+            if botao_buscar:
+                st.session_state.buscar_ativa = True
 
     # 4. PROCESSAMENTO E EXIBIÇÃO DOS RESULTADOS
-    if botao_buscar:
+    if st.session_state.buscar_ativa:
         codigo_solicitado = linha_selecionada.split(" — ")[0]
         df_filtrado = df_linhas[df_linhas["codigo_linha"] == codigo_solicitado].copy()
 
@@ -153,7 +168,7 @@ else:
         total_viagens = len(df_filtrado)
         sentidos_disponiveis = df_filtrado["sentido"].unique()
 
-        # --- CAMADA VISUAL 1: KPIs Principais (Com Estilização Dinâmica de Alerta) ---
+        # --- CAMADA VISUAL 1: KPIs Principais ---
         st.subheader(f"📊 Indicadores de Performance: Linha {codigo_solicitado}")
         
         df_live_status = buscar_gps_tempo_real(codigo_solicitado)
@@ -162,7 +177,6 @@ else:
         if not df_live_status.empty:
             status_cerca = df_live_status["status_rota"].iloc[0]
 
-        # Lógica de Cores Dinâmicas para a Cerca Virtual
         if status_cerca == "⚠️ Fora de Rota":
             st.error(f"🚨 ALERTAS OPERACIONAIS: O veículo da linha {codigo_solicitado} violou a cerca virtual geográfica de Ribeirão Preto!")
             border_cerca = "1px solid #FF4B4B"
@@ -171,7 +185,6 @@ else:
             border_cerca = "1px solid #29B6F6"
             bg_cerca = "rgba(41, 182, 246, 0.08)"
 
-        # Lógica de Cores Dinâmicas para Pontualidade (OTP)
         try:
             query_otp = f"""
                 SELECT 
@@ -219,15 +232,12 @@ else:
             border_otp = "1px solid #00E676"
             bg_otp = "rgba(0, 230, 118, 0.08)"
 
-        # Injeta dinamicamente os estilos customizados baseados no estado operacional
         st.markdown(f"""
             <style>
-                /* Altera dinamicamente o segundo bloco (OTP) */
                 div[data-testid="stHorizontalBlock"] > div:nth-child(2) div[data-testid="stMetric"] {{
                     background-color: {bg_otp} !important;
                     border: {border_otp} !important;
                 }}
-                /* Altera dinamicamente o terceiro bloco (Cerca Virtual) */
                 div[data-testid="stHorizontalBlock"] > div:nth-child(3) div[data-testid="stMetric"] {{
                     background-color: {bg_cerca} !important;
                     border: {border_cerca} !important;
@@ -235,7 +245,6 @@ else:
             </style>
         """, unsafe_allow_html=True)
 
-        # Grid de métricas renderizado
         col1, col2, col3, col4 = st.columns(4)
         col1.metric(label="🚌 Linha Alvo", value=nome_linha_limpo)
         col2.metric(label="⏱️ Status de Pontualidade (OTP)", value=status_otp, delta=detalhe_otp)
@@ -249,7 +258,7 @@ else:
             [
                 "🕒 Grade Horária Operacional",
                 "📈 Análise Volumétrica",
-                "🗺️ Cobertura Geográfica",
+                "🗺️ Posição em Tempo Real",
             ]
         )
 
@@ -263,7 +272,6 @@ else:
             )
 
             df_horarios_dia = df_filtrado[df_filtrado["tipo_dia"] == tipo_dia].copy()
-            
             df_horarios_dia["horario_partida_limpo"] = df_horarios_dia["horario_partida"].apply(tratar_horario_transporte)
             df_horarios_dia = df_horarios_dia.sort_values(by="horario_partida_limpo")
 
@@ -280,14 +288,12 @@ else:
 
         with aba_analise:
             st.markdown("#### 📊 Distribuição de Viagens por Período")
-            
             df_filtrado["horario_partida_limpo"] = df_filtrado["horario_partida"].apply(tratar_horario_transporte)
             df_filtrado["hora_pura"] = pd.to_datetime(
                 df_filtrado["horario_partida_limpo"], format="%H:%M", errors="coerce"
             ).dt.hour
             
             df_analise_limpo = df_filtrado.dropna(subset=["hora_pura"])
-            
             contagem_horas = (
                 df_analise_limpo.groupby(["hora_pura", "tipo_dia"])
                 .size()
@@ -296,17 +302,15 @@ else:
             st.bar_chart(contagem_horas, use_container_width=True)
 
         with aba_trajeto:
-            st.markdown("#### 🗺️ Monitoramento de Frota em Tempo Real")
-            st.caption("Mapa atualizado a cada 4 segundos com detecção de desvios geográficos ativos.")
+            st.markdown("#### 📡 Monitoramento de Posição Atual (Live)")
+            st.caption("Localização exata obtida diretamente do último sinal de telemetria activa (Atualiza a cada 4s).")
 
             from streamlit_autorefresh import st_autorefresh
 
             @st.fragment
             def renderizar_mapa_tempo_real(codigo_linha_atual, nome_linha_atual):
                 st_autorefresh(interval=4000, limit=100, key="gps_folium_refresh")
-
                 df_gps = buscar_gps_tempo_real(codigo_linha_atual)
-                df_historico = buscar_historico_trajeto(codigo_linha_atual)
 
                 if not df_gps.empty:
                     lat = float(df_gps["latitude"].iloc[0])
@@ -314,64 +318,92 @@ else:
                     ultima_att = pd.to_datetime(df_gps["ultima_atualizacao"].iloc[0]).strftime('%H:%M:%S')
                     status_atual_rota = df_gps["status_rota"].iloc[0]
 
-                    # 1. Inicializa o mapa Folium Dark
-                    m = folium.Map(
-                        location=[lat, lon], 
-                        zoom_start=14, 
-                        tiles="CartoDB dark_matter"
-                    )
+                    m = folium.Map(location=[lat, lon], zoom_start=15, tiles="CartoDB dark_matter")
 
-                    cor_marcador = "red" if status_atual_rota == "⚠️ Fora de Rota" else "blue"
-                    cor_linha = "#E53935" if status_atual_rota == "⚠️ Fora de Rota" else "#29B6F6"
+                    if status_atual_rota == "⚠️ Fora de Rota":
+                        cor_status = "red"
+                        cor_circulo = "#EF5350"
+                        st.error(f"🚨 Alerta Crítico: O veículo acabou de violar o perímetro permitido! [Último sinal: {ultima_att}]")
+                    else:
+                        cor_status = "blue"
+                        cor_circulo = "#29B6F6"
+                        st.success(f"🟢 Operação Normalizada: Veículo rastreado dentro da rota prevista. [Último sinal: {ultima_att}]")
 
-                    # 2. SE HOUVER HISTÓRICO: Desenha o rastro (Polilinha) adaptável
-                    if not df_historico.empty and len(df_historico) > 1:
-                        pontos_linha = df_historico[["latitude", "longitude"]].values.tolist()
-                        folium.PolyLine(
-                            locations=pontos_linha,
-                            color=cor_linha,
-                            weight=4,
-                            opacity=0.8,
-                            tooltip="Trajeto Recente"
-                        ).add_to(m)
+                    folium.Circle(
+                        location=[lat, lon],
+                        radius=150,  
+                        color=cor_circulo,
+                        fill=True,
+                        fill_color=cor_circulo,
+                        fill_opacity=0.15,
+                        weight=1,
+                        tooltip="Raio de Tolerância Operacional"
+                    ).add_to(m)
 
-                    # 3. Popup explicativo do ônibus
                     texto_popup = f"""
-                    <div style="font-family: Arial, sans-serif; font-size: 12px; color: #333;">
+                    <div style="font-family: Arial, sans-serif; font-size: 12px; color: #333; min-width: 180px;">
                         <strong>🚌 Linha {codigo_linha_atual}</strong><br>
                         <span style="color: #666;">{nome_linha_atual}</span><br><br>
-                        <strong>📡 Monitoramento:</strong> Cerca Virtual Ativa<br>
+                        <strong>📡 Telemetria:</strong> GPS Online<br>
                         <strong>🌐 Status Geográfico:</strong> {status_atual_rota}<br>
-                        <strong>⏰ Último Sinal:</strong> {ultima_att}
+                        <strong>⏰ Horário do Sinal:</strong> {ultima_att}
                     </div>
                     """
 
-                    # 4. Marcador do Ônibus (Posição Atual)
                     folium.Marker(
                         location=[lat, lon],
                         popup=folium.Popup(texto_popup, max_width=250),
-                        tooltip=f"Linha {codigo_linha_atual} - {status_atual_rota}",
-                        icon=folium.Icon(color=cor_marcador, icon="bus", prefix="fa")
+                        tooltip=f"Prefixo {codigo_linha_atual} — {status_atual_rota}",
+                        icon=folium.Icon(color=cor_status, icon="bus", prefix="fa")
                     ).add_to(m)
-
-                    if status_atual_rota == "⚠️ Fora de Rota":
-                        st.error(f"🚨 Alerta no Mapa: Ônibus operando fora da área permitida! [Sinal: {ultima_att}]")
-                    else:
-                        st.success(f"🟢 Operação Normalizada: Veículo dentro da malha geográfica. [Sinal: {ultima_att}]")
                     
-                    st_folium(m, use_container_width=True, height=500, key=f"mapa_estavel_{codigo_linha_atual}")
+                    st_folium(m, use_container_width=True, height=520, key=f"mapa_live_{codigo_linha_atual}")
                 else:
-                    st.warning("⚠️ Nenhum sinal de GPS encontrado para esta linha no momento.")
+                    st.warning("⚠️ Nenhum sinal de GPS ativo foi transmitido para esta linha nos últimos ciclos.")
 
             renderizar_mapa_tempo_real(codigo_solicitado, nome_linha_limpo)
 
     else:
-        st.info("👈 Use o Painel de Controle à esquerda para selecionar uma linha operacional.")
+        # --- TELA PRINCIPAL DE BOAS-VINDAS ---
+        st.info("👈 **Para iniciar o monitoramento:** Utilize o Painel de Controle à esquerda, selecione uma Linha Operacional e clique em **Atualizar Indicadores**.")
 
         st.markdown("""
-            ### 🏗️ Arquitetura de Dados do Projeto
-            Esta aplicação faz parte do portfólio **BusFlow RP**. O ecossistema foi projetado pensando em escalabilidade:
-            1. **Ingestão (Ingest):** Scripts Python coletam dados, aplicam lógica de Geofencing na borda e salvam de forma estruturada.
-            2. **Armazenamento (Storage):** Banco de dados relacional PostgreSQL gerenciado via SQLAlchemy armazenando posições em tempo real e tabelas históricas.
-            3. **Consumo (Analytics):** Painel gerencial construído em Streamlit conectado diretamente à base SQL com alertas automatizados.
+            ### 📊 Sobre o Painel Analítico • BusFlow RP
+            O **BusFlow RP** é uma plataforma de Engenharia de Dados desenvolvida para monitorar, auditar e otimizar a eficiência do transporte público urbano de Ribeirão Preto em tempo real. 
+            
+            A aplicação consome dados brutos de telemetria veicular, processa regras de negócio diretamente na base de dados e transforma sinais de GPS em indicadores logísticos estratégicos.
+            
+            ---
+            
+            ### 🚀 Recursos Disponíveis por Linha
+            Selecione uma linha no menu lateral para acessar as seguintes camadas analíticas:
         """)
+
+        # Grid de Recursos usando os containers nativos do Streamlit (Garante estabilidade visual)
+        col_feat1, col_feat2, col_feat3 = st.columns(3)
+
+        with col_feat1:
+            with st.container(border=True):
+                st.markdown("#### ⏱️ Pontualidade (OTP)")
+                st.caption("Calcula o desvio em minutos entre o horário planejado na malha horária e a última transmissão real do GPS (On-Time Performance).")
+
+        with col_feat2:
+            with st.container(border=True):
+                st.markdown("#### 🌐 Cerca Virtual")
+                st.caption("Valida algoritmos de *Geofencing* rodando na base, detectando instantaneamente se o veículo realizou desvios ou operou fora do itinerário.")
+
+        with col_feat3:
+            with st.container(border=True):
+                st.markdown("#### 📡 Telemetria Live")
+                st.caption("Mapa dinâmico integrado que isola o ruído de rede e renderiza a última posição válida com ciclos automatizados de atualização a cada 4 segundos.")
+
+        st.markdown("<br><br>", unsafe_allow_html=True)
+        st.write("---")
+        
+        # Expanders para manter detalhes de backend ocultos por padrão
+        with st.expander("🛠️ Detalhes da Infraestrutura de Dados (Stack Tecnológica)"):
+            st.markdown("""
+                * **Ingestão (Pipeline):** Scripts Python estruturados para limpeza de dados operacionais e tratamento de exceções de horários.
+                * **Armazenamento (Storage):** Banco de dados relacional PostgreSQL hospedado em nuvem e mapeado via SQLAlchemy.
+                * **Consumo (Analytics):** Streamlit Web App integrado com Folium para renderização de mapas geoespaciais em tempo real.
+            """)
