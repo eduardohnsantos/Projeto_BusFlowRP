@@ -31,7 +31,8 @@ O projeto foi construído utilizando arquitetura modular baseada em:
 
 Interface inicial desenvolvida para apresentar os indicadores operacionais e facilitar a navegação entre os módulos do sistema.
 
-![Home](docs/home.png)
+<img width="1908" height="926" alt="BusFlow RP" src="https://github.com/user-attachments/assets/6583dbb8-0367-46a8-acf1-622d58fc535f" />
+
 
 ---
 
@@ -44,7 +45,8 @@ Visualização dinâmica da telemetria da frota, incluindo:
 - KPIs operacionais
 - Validação de geofencing
 
-![Mapa](docs/mapa.png)
+<img width="1616" height="1080" alt="Mapa" src="https://github.com/user-attachments/assets/28766ac5-3415-43bd-b658-f064e6584269" />
+
 
 ---
 
